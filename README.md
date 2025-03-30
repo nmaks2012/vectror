@@ -1,0 +1,2 @@
+# vectror
+Аналог std::vector
