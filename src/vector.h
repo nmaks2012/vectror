@@ -15,6 +15,17 @@ public:
         , capacity_(capacity) {
     }
 
+    RawMemory(const RawMemory&) = delete;
+    RawMemory& operator=(const RawMemory&) = delete;
+    
+    RawMemory(RawMemory&& other) noexcept {
+
+    }
+
+    RawMemory& operator=(RawMemory& rhs) noexcept {
+
+    }
+
     ~RawMemory() {
         Deallocate(buffer_);
     }
@@ -90,6 +101,51 @@ public:
         , size_(other.size_)
     {
         std::uninitialized_copy_n(other.data_.GetAddress(), size_, data_.GetAddress());
+    }
+
+    Vector(Vector&& other) noexcept {
+        Swap(other);
+    }
+
+    Vector& operator=(const Vector& rhs) {
+        if (this != &rhs) {
+            if (rhs.size_ > data_.Capacity()) {
+                Vector rhs_copy(rhs);
+                Swap(rhs_copy);
+            }
+            else {
+                if (rhs.size_ < size_) {
+                    std::copy(rhs.data_.GetAddress(), rhs.data_.GetAddress() + rhs.size_, data_.GetAddress());
+                    std::destroy_n(data_.GetAddress() + rhs.size_, size_ - rhs.size_);
+                }
+                else {
+                    std::copy(rhs.data_.GetAddress(), rhs.data_.GetAddress() + size_, data_.GetAddress());
+                    std::uninitialized_copy_n(rhs.data_.GetAddress() + size_, rhs.size_ - size_, data_.GetAddress() + size_);
+                }
+                size_ = rhs.size_;
+            }
+        }
+        return *this;
+    }
+
+    Vector& operator=(Vector&& rhs) noexcept {
+        if (this != &rhs) {
+            if (rhs.size_ > data_.Capacity()) {
+                Vector rhs_copy(std::move(rhs));
+                Swap(rhs_copy);
+            }
+            else {
+                std::uninitialized_move_n(rhs.data_.GetAddress(), rhs.size_, data_.GetAddress());
+                std::destroy_n(data_.GetAddress() + rhs.size_, data_.Capacity() - rhs.size_);
+                size_ = rhs.size_;
+            }
+        }
+        return *this;
+    }
+
+    void Swap(Vector& other) noexcept {
+        data_.Swap(other.data_);
+        std::swap(size_, other.size_);
     }
 
     size_t Size() const noexcept {
