@@ -1,46 +1,58 @@
 #include "vector.h"
+#include <stdexcept>
 
 namespace {
 
-struct Obj {
-    Obj() {
-        ++num_default_constructed;
-    }
+    struct Obj {
+        Obj() {
+            if (default_construction_throw_countdown > 0) {
+                if (--default_construction_throw_countdown == 0) {
+                    throw std::runtime_error("Oops");
+                }
+            }
+            ++num_default_constructed;
+        }
 
-    Obj(const Obj& /*other*/) {
-        ++num_copied;
-    }
+        Obj(const Obj& other) {
+            if (other.throw_on_copy) {
+                throw std::runtime_error("Oops");
+            }
+            ++num_copied;
+        }
 
-    Obj(Obj&& /*other*/) noexcept {
-        ++num_moved;
-    }
+        Obj(Obj&&/*other*/) noexcept {
+            ++num_moved;
+        }
 
-    Obj& operator=(const Obj& other) = default;
-    Obj& operator=(Obj&& other) = default;
+        Obj& operator=(const Obj& other) = default;
+        Obj& operator=(Obj&& other) = default;
 
-    ~Obj() {
-        ++num_destroyed;
-    }
+        ~Obj() {
+            ++num_destroyed;
+        }
 
-    static int GetAliveObjectCount() {
-        return num_default_constructed + num_copied + num_moved - num_destroyed;
-    }
+        static int GetAliveObjectCount() {
+            return num_default_constructed + num_copied + num_moved - num_destroyed;
+        }
 
-    static void ResetCounters() {
-        num_default_constructed = 0;
-        num_copied = 0;
-        num_moved = 0;
-        num_destroyed = 0;
-    }
+        static void ResetCounters() {
+            default_construction_throw_countdown = 0;
+            num_default_constructed = 0;
+            num_copied = 0;
+            num_moved = 0;
+            num_destroyed = 0;
+        }
 
-    static inline int num_default_constructed = 0;
-    static inline int num_copied = 0;
-    static inline int num_moved = 0;
-    static inline int num_destroyed = 0;
-};
+        bool throw_on_copy = false;
 
-}  // namespace
+        static inline int default_construction_throw_countdown = 0;
+        static inline int num_default_constructed = 0;
+        static inline int num_copied = 0;
+        static inline int num_moved = 0;
+        static inline int num_destroyed = 0;
+    };
 
+}// namespace
 void Test1() {
     Obj::ResetCounters();
     const size_t SIZE = 100500;
@@ -92,6 +104,63 @@ void Test1() {
     assert(Obj::GetAliveObjectCount() == 0);
 }
 
+void Test2() {
+    const size_t SIZE = 100;
+    Obj::ResetCounters();
+    {
+        Obj::default_construction_throw_countdown = SIZE / 2;
+        try {
+            Vector<Obj> v(SIZE);
+            assert(false && "Exception is expected");
+        }
+        catch (const std::runtime_error&) {
+        }
+        catch (...) {
+            // Unexpected error
+            assert(false && "Unexpected exception");
+        }
+        assert(Obj::num_default_constructed == SIZE / 2 - 1);
+        assert(Obj::GetAliveObjectCount() == 0);
+    }
+    Obj::ResetCounters();
+    {
+        Vector<Obj> v(SIZE);
+        try {
+            v[SIZE / 2].throw_on_copy = true;
+            Vector<Obj> v_copy(v);
+            assert(false && "Exception is expected");
+        }
+        catch (const std::runtime_error&) {
+            assert(Obj::num_copied == SIZE / 2);
+        }
+        catch (...) {
+            // Unexpected error
+            assert(false && "Unexpected exception");
+        }
+        assert(Obj::GetAliveObjectCount() == SIZE);
+    }
+    Obj::ResetCounters();
+    {
+        Vector<Obj> v(SIZE);
+        try {
+            v[SIZE - 1].throw_on_copy = true;
+            v.Reserve(SIZE * 2);
+            assert(false && "Exception is expected");
+        }
+        catch (const std::runtime_error&) {
+            assert(Obj::num_copied == SIZE - 1);
+        }
+        catch (...) {
+            // Unexpected error
+            assert(false && "Unexpected exception");
+        }
+        assert(v.Capacity() == SIZE);
+        assert(v.Size() == SIZE);
+        assert(Obj::GetAliveObjectCount() == SIZE);
+    }
+}
+
 int main() {
     Test1();
+    Test2();
 }
