@@ -2,14 +2,13 @@
 
 int main() {
     try {
-        TestInitialization();
-        TestAssignment();
-        TestMoveAssignment();
-        TestValueAccess();
-        TestReset();
-        TestEmplace();
+        Test1();
+        Test2();
+        Test3();
+        Test4();
+        Test5();
     }
-    catch (...) {
-        assert(false);
+    catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
     }
 }

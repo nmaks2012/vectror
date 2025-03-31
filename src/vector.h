@@ -229,6 +229,33 @@ public:
         --size_;
     }
 
+    template<typename ... Args>
+    T& EmplaceBack(Args&& ... args) {
+
+        T* result_ptr = nullptr;
+
+        if (size_ < data_.Capacity()) {
+            result_ptr = new (data_.GetAddress() + size_) T(std::forward<Args>(args)...);
+            ++size_;
+        }
+        else {
+            RawMemory<T> new_data(Capacity() == 0 ? 1 : Capacity() * 2);
+            result_ptr = new(new_data.GetAddress() + size_) T(std::forward<Args>(args)...);
+            if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
+                std::uninitialized_move_n(data_.GetAddress(), size_, new_data.GetAddress());
+            }
+            else {
+                std::uninitialized_copy_n(data_.GetAddress(), size_, new_data.GetAddress());
+            }
+            std::destroy_n(data_.GetAddress(), size_);
+            data_ = std::move(new_data);
+            ++size_;
+        }
+
+        return *result_ptr;
+
+    }
+
     ~Vector() {
         std::destroy_n(data_.GetAddress(), size_);
     }
