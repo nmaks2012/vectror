@@ -1,2 +1,2 @@
-# vectror
+# vector
 Аналог std::vector

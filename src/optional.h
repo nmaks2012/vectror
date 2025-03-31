@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdexcept>
 #include <utility>
 
@@ -41,6 +43,14 @@ public:
     const T& Value() const;
 
     void Reset();
+
+    template<typename... Params>
+    void Emplace(Params&&... params) {
+        if (HasValue()) {
+            Reset();
+        }
+        ptr_ = new(&data_[0]) T(std::forward<Params>(params)...);
+    }
 
 private:
     // alignas нужен для правильного выравнивания блока памяти

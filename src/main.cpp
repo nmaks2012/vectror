@@ -1,8 +1,15 @@
 #include "tests.h"
 
 int main() {
-    Test1();
-    Test2();
-    Test3();
-    Test4();
+    try {
+        TestInitialization();
+        TestAssignment();
+        TestMoveAssignment();
+        TestValueAccess();
+        TestReset();
+        TestEmplace();
+    }
+    catch (...) {
+        assert(false);
+    }
 }
