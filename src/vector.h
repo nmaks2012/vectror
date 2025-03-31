@@ -18,12 +18,19 @@ public:
     RawMemory(const RawMemory&) = delete;
     RawMemory& operator=(const RawMemory&) = delete;
     
-    RawMemory(RawMemory&& other) noexcept {
+    RawMemory(RawMemory&& other) noexcept
+        : buffer_(Allocate(other.capacity_)) {
+
+        std::uninitialized_move_n(other.buffer_, other.capacity_, buffer_);
 
     }
 
-    RawMemory& operator=(RawMemory& rhs) noexcept {
-
+    RawMemory& operator=(RawMemory&& rhs) noexcept {  
+        buffer_ = rhs.buffer_;
+        capacity_ = rhs.capacity_;
+        rhs.buffer_ = nullptr;
+        rhs.capacity_ = 0;
+        return *this;
     }
 
     ~RawMemory() {
@@ -181,6 +188,44 @@ public:
         std::destroy_n(data_.GetAddress(), size_);
         data_.Swap(new_data);
 
+    }
+
+    void Resize(size_t new_size) {
+        if (size_ > new_size) {
+            std::destroy_n(data_.GetAddress() + new_size, size_ - new_size);
+            size_ = new_size;
+        }
+        else if (size_ < new_size) {
+            Reserve(new_size);
+            std::uninitialized_value_construct_n(data_.GetAddress() + size_, new_size);
+            size_ = new_size;
+        }
+    }
+
+    template<typename Ref>
+    void PushBack(Ref&& value) {
+        if (size_ < data_.Capacity()) {
+            new (data_.GetAddress() + size_) T(std::forward<Ref>(value));
+            ++size_;
+        }
+        else {
+            RawMemory<T> new_data(Capacity() == 0 ? 1 : Capacity() * 2);
+            new(new_data.GetAddress() + size_) T(std::forward<Ref>(value));
+            if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
+                std::uninitialized_move_n(data_.GetAddress(), size_, new_data.GetAddress());
+            }
+            else {
+                std::uninitialized_copy_n(data_.GetAddress(), size_, new_data.GetAddress());
+            }
+            std::destroy_n(data_.GetAddress(), size_);
+            data_ = std::move(new_data);
+            ++size_;
+        }
+    }
+
+    void PopBack() {
+        std::destroy_n(data_.GetAddress() + size_ - 1, 1);
+        --size_;
     }
 
     ~Vector() {
