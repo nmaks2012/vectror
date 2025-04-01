@@ -33,14 +33,16 @@ public:
 
     // Операторы * и -> не должны делать никаких проверок на пустоту Optional.
     // Эти проверки остаются на совести программиста
-    T& operator*();
-    const T& operator*() const;
-    T* operator->();
-    const T* operator->() const;
+    T& operator*()&;
+    T&& operator*()&&;
+    const T& operator*() const&;
+    T* operator->()&;
+    const T* operator->() const&;
 
     // Метод Value() генерирует исключение BadOptionalAccess, если Optional пуст
-    T& Value();
-    const T& Value() const;
+    T& Value() &;
+    T&& Value()&&;
+    const T& Value() const&;    
 
     void Reset();
 
@@ -133,22 +135,27 @@ Optional<T>& Optional<T>::operator=(Optional<T>&& rhs){
 }
 
 template <typename T>
-T& Optional<T>::operator*() {
+T& Optional<T>::operator*() & {
+    return *ptr_;
+}
+
+template<typename T>
+T&& Optional<T>::operator*()&& {
+    return std::move(*ptr_);
+}
+
+template <typename T>
+const T& Optional<T>::operator*() const& {
     return *ptr_;
 }
 
 template <typename T>
-const T& Optional<T>::operator*() const {
-    return *ptr_;
-}
-
-template <typename T>
-T* Optional<T>::operator->() {
+T* Optional<T>::operator->() & {
     return ptr_;
 }
 
 template <typename T>
-const T* Optional<T>::operator->() const {
+const T* Optional<T>::operator->() const& {
     return ptr_;
 }
 
@@ -163,7 +170,7 @@ Optional<T>::~Optional() {
 }
 
 template <typename T>
-T& Optional<T>::Value() {
+T& Optional<T>::Value() & {
     if (!ptr_) {
         throw BadOptionalAccess("Trying to get the values of an empty pointer");
     }
@@ -171,11 +178,19 @@ T& Optional<T>::Value() {
 }
 
 template <typename T>
-const T& Optional<T>::Value() const {
+const T& Optional<T>::Value() const& {
     if (!ptr_) {
         throw BadOptionalAccess("Trying to get the values of an empty pointer");
     }
     return *ptr_;
+}
+
+template<typename T>
+T&& Optional<T>::Value()&& {
+    if (!ptr_) {
+        throw BadOptionalAccess("Trying to get the values of an empty pointer");
+    }
+    return std::move(*ptr_);
 }
 
 template <typename T>

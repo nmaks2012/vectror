@@ -2,15 +2,15 @@
 
 int main() {
     try {
-        Test1();
-        Test2();
-        Test3();
-        Test4();
-        Test5();
-        Test6();
-        Benchmark();
+        TestInitialization();
+        TestAssignment();
+        TestMoveAssignment();
+        TestValueAccess();
+        TestReset();
+        TestEmplace();
+        TestRefQualifiedMethodOverloading();
     }
-    catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    catch (...) {
+        assert(false);
     }
 }
